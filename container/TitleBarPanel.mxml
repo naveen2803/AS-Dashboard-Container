@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+/************************************************************************************************************************************************
+ * 						COPYRIGHT (c) 2000																										*
+ * 						HONEYWELL INC.,																											*
+ *                     ALL RIGHTS RESERVED																										*					
+ *     This software is a copyrighted work and/or information protected as a trade secret.														*
+ *     Legal rights of Honeywell Inc. in this software is distinct from ownership of any medium in which the software is embodied.				*
+ *     Copyright or trade secret notices included must be reproduced in any copies authorized by Honeywell Inc. 								*	
+ *     The information in this software is subject to change without notice and should not be considered as a commitment by Honeywell Inc.		*	
+ * 																																				*
+ *  																																			*	
+ *      File Name                           :   TitleBarPannel.mxml																				*	
+ *      Project Title                       :   Application Portfolio Rationalization															*	
+ *		Author(s)                           :	Naveen Malhotra																					*		
+ * 		Created Date						:	06/23/2009																						*	
+ ************************************************************************************************************************************************
+*/
+-->
+
+<mx:Panel xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute"
+	creationComplete="fnOnCreationComplete();" 
+	dropShadowEnabled="false" styleName="stylenamep"
+	>
+	<mx:Style>
+		.stylenamep
+		{
+			padding-top: 31px;
+			padding-left: 10px;
+			padding-right: 10px;
+			padding-bottom: 10px;
+			rounded-bottom-corners: false;
+			border-thickness: 1px;
+			border-style: solid;
+			border-color: #999999;
+			header-colors: #cccccc, #fcfcfc;
+			highlight-alphas: .9, 0;
+			corner-radius: 6px;
+			header-height: 22px;
+			shadow-direction: right;
+		}
+	</mx:Style>
+	<mx:Metadata> 
+        [Event(name="Imgclick", type="MouseEvent.CLICK")]
+    </mx:Metadata> 
+
+	<mx:Script>
+		<![CDATA[
+			import mx.core.BitmapAsset;
+			import mx.managers.DragManager;
+			import mx.core.DragSource;
+			import mx.events.ChildExistenceChangedEvent;
+			import mx.events.DragEvent;
+			import mx.effects.easing.Back;
+			import mx.effects.easing.Exponential;
+			import mx.effects.Move;
+			import mx.effects.Parallel;
+			import mx.core.Application;
+			import mx.events.EffectEvent;
+			import mx.effects.Resize;
+			import mx.controls.Alert;
+			import mx.effects.Sequence;
+			import mx.controls.Spacer;
+			import mx.containers.HBox;
+			import mx.controls.Image;
+			import mx.core.Application;
+			import container.canvasContainer;
+			
+			private var _showMaximizeButton:Boolean = true; 
+			public static var isChartAnimating:Boolean = false;
+			public static var isMouseDown:Boolean = false; 
+			private const RESTORE_IMG:String = "restore";
+			private const MAXIMIZE_IMG:String = "maximize";
+			
+			[Embed ("assets/images/maximize_over.png")]
+			private var MaximizeOver:Class;
+			
+			[Embed ("assets/images/maximize_up.png")]
+			private var MaximizeUp:Class;
+			
+			[Embed ("assets/images/restore_over.png")]
+			private var RestoreOver:Class;
+			
+			[Embed ("assets/images/restore_up.png")]
+			private var RestoreUp:Class;
+			
+			[Bindable (event = "chartMaximize")]
+			public function get chartMaximized():Boolean
+			{
+				return boolChartExpanded;
+			}
+		
+			private var MaximizeImage:Image;
+			private var RestoreImage:Image;
+			private var titleHbox:HBox;
+			private var spBefore:Spacer;
+			private var spAfter:Spacer;
+			private var boolChartExpanded:Boolean = false;
+			private var selectedTarget:String = "";
+			private var orignalChartWidth:int = 0;
+			private var orignalChartHeight:int = 0;
+			private var tabName:String = "";
+			private var sectionIndex:int = 0;
+			
+			private var xoffset:Number;
+            private var yoffset:Number;
+			private static const FORMAT:String = "panel";
+			
+			[Inspectable(defaultValue=true, verbose=1, category="Other")]
+			public function get showMaximizeButton():Boolean
+			{
+				return _showMaximizeButton;
+			}
+			public function set showMaximizeButton(value:Boolean):void
+			{
+				_showMaximizeButton = value;	
+			}
+			
+			private function onMouseDown(e:MouseEvent):void
+			{
+				isMouseDown = true;
+			}
+			
+			private function onMouseUp(e:MouseEvent):void
+			{
+				isMouseDown = false;
+			}
+			
+			private function onMouseMove(e:MouseEvent):void
+			{
+				if(isMouseDown)
+				{	
+					xoffset = e.localX;
+	                yoffset = e.localY;
+	                var initiator:Panel = this;
+	                var proxyBox:BitmapAsset = new BitmapAsset();
+	                proxyBox.bitmapData = new BitmapData( initiator.width,
+	                                                      initiator.height );
+	                proxyBox.bitmapData.draw( initiator );
+	                var dragSource:DragSource = new DragSource();
+	                dragSource.addData( initiator, FORMAT );
+	
+	                DragManager.doDrag( initiator, dragSource, e,
+	                                      proxyBox, 0, 0, 0.7 ); 
+	   			}
+			}
+			
+			private function fnOnCreationComplete():void
+			{
+				RestoreImage = new Image();
+				RestoreImage.name = RESTORE_IMG;
+				RestoreImage.source = RestoreUp;
+				RestoreImage.useHandCursor = true;
+				RestoreImage.buttonMode = true;
+				RestoreImage.mouseChildren = false;
+				RestoreImage.addEventListener(MouseEvent.CLICK, imageClick);
+				RestoreImage.addEventListener(MouseEvent.MOUSE_OVER, mouseOver);
+				RestoreImage.addEventListener(MouseEvent.MOUSE_OUT, mouseOut);
+				
+				MaximizeImage = new Image();
+				MaximizeImage.name = MAXIMIZE_IMG;
+				MaximizeImage.source = MaximizeUp;
+				MaximizeImage.useHandCursor = true;
+				MaximizeImage.buttonMode = true;
+				MaximizeImage.mouseChildren = false;
+				MaximizeImage.addEventListener(MouseEvent.CLICK, imageClick);
+				MaximizeImage.addEventListener(MouseEvent.MOUSE_OVER, mouseOver);
+				MaximizeImage.addEventListener(MouseEvent.MOUSE_OUT, mouseOut);
+				
+				
+				spBefore = new Spacer();
+				spBefore.percentWidth = 100;
+				
+				spAfter = new Spacer();
+				spAfter.width = 10;
+				
+				titleHbox = new HBox();			
+				titleHbox.width = this.titleBar.width;
+				titleHbox.height = this.titleBar.height;
+				titleHbox.setStyle("verticalAlign", "middle");
+				titleHbox.addChild(spBefore);
+				titleHbox.addChild(MaximizeImage);
+				titleHbox.addChild(spAfter);
+				//this.titleBar.addChild(titleHbox);
+				this.titleBar.addEventListener(MouseEvent.MOUSE_DOWN, onMouseDown);
+				this.titleBar.addEventListener(MouseEvent.MOUSE_MOVE, onMouseMove);
+				this.titleBar.addEventListener(MouseEvent.MOUSE_UP, onMouseUp);
+			}
+			
+			private function onDrag(e:DragEvent):void
+			{
+				
+			}
+			private function mouseOver(event:MouseEvent):void
+			{
+				if(Image(event.target).name == RESTORE_IMG)
+				{
+					RestoreImage.source = RestoreOver;
+				}
+				else
+				{
+					MaximizeImage.source = MaximizeOver;
+				}
+			}
+			
+			private function mouseOut(event:MouseEvent):void
+			{
+				if(Image(event.target).name == RESTORE_IMG)
+				{
+					RestoreImage.source = RestoreUp;
+				}
+				else
+				{
+					MaximizeImage.source = MaximizeUp;
+				}
+			}
+	        
+			public function imageClick(event:MouseEvent):void
+			{
+				if(!isChartAnimating)
+				{	
+					dispatchEvent(new MouseEvent("Imgclick"));
+					if(boolChartExpanded)
+					{
+						boolChartExpanded = false;	
+					}
+					else
+					{
+						boolChartExpanded = true;
+					}
+					this.titleBar.removeChild(titleHbox);
+				}
+			}
+			
+			override protected function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void
+			{
+				super.updateDisplayList(unscaledWidth, unscaledHeight);
+				if(titleHbox != null)
+				{
+					titleHbox = new HBox();			
+					titleHbox.width = this.titleBar.width;
+					titleHbox.height = this.titleBar.height;
+					titleHbox.setStyle("verticalAlign", "middle");
+					titleHbox.addChild(spBefore);
+					if(boolChartExpanded)	
+						titleHbox.addChild(RestoreImage);
+					else	
+						titleHbox.addChild(MaximizeImage);
+						
+					titleHbox.addChild(spAfter);
+					if(showMaximizeButton)
+					{
+						this.titleBar.addChild(titleHbox);
+					}
+				}
+			}
+		]]>
+	</mx:Script>
+</mx:Panel>
+
